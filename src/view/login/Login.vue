@@ -1,0 +1,179 @@
+<template>
+  <div class="login-wrapper">
+    <el-header>
+      <LangChange/>
+    </el-header>
+    <div class="login">
+      <el-card class="login-center">
+        <template #header>
+          <div class="card_header">
+            <span>{{ $t('home.login.form.title') }}</span>
+          </div>
+        </template>
+        <el-form ref="loginFormRef" :model="loginFormState" :rules="rules">
+          <el-form-item prop="phone">
+            <el-input
+              v-model.trim="loginFormState.phone"
+              prefix-icon="el-icon-user-solid"
+              maxlength="32"
+              :placeholder="$t('home.login.form.accountPlaceholder')"
+              clearable/>
+          </el-form-item>
+          <el-form-item prop="pwd">
+            <el-input
+              v-model.trim="loginFormState.pwd"
+              prefix-icon="el-icon-lock"
+              maxlength="16"
+              show-password
+              :placeholder="$t('home.login.form.passwordPlaceholder')"
+              clearable
+              @keyup.enter.exact="handleLogin"/>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" style="width: 45%" :loading="loginFormState.loading" @click="handleLogin">{{$t('home.login.form.loginButtom')}}</el-button>
+            <el-button type="primary" style="width: 50%; background-color: #ffffff; color: black;" @click="handleRegister">{{$t('home.register.form.registerButtom')}}</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { encode } from 'js-base64'
+import { setToken, setAuthed } from '@/utils/auth'
+import { useUserStore } from '@/store/modules/user'
+import LangChange from '@/components/Tool/LangChange.vue'
+import { useI18n } from '@/hooks/web/usei18n'
+import axios from 'axios'
+import { ElMessage } from 'element-plus'
+
+const router = useRouter()
+const userStore = useUserStore()
+const loginFormRef = ref()
+const { t } = useI18n()
+const loginFormState = reactive({
+  phone: '',
+  pwd: '',
+  loading: false
+})
+const rules = {
+  phone: [{ required: true, message: t('home.login.form.accountRequired'), trigger: 'blur' }],
+  pwd: [{ required: true, message: t('home.login.form.passwordRequired'), trigger: 'blur' }]
+}
+const handleRegister = () => {
+  loginFormRef.value.validate(valid => {
+    if (!valid) {
+      return false
+    }
+    loginFormState.loading = true
+    const loginForm = {
+      phone: loginFormState.phone,
+      password: loginFormState.pwd
+    }
+    console.log(loginForm)
+    axios.post('http://localhost:9000/user/register', loginForm, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }).then(response => {
+      console.log(response)
+      if (response.data.success) {
+        const users = { role: 'admin', UUID: response.data.data.id, username: response.data.data.name, phone: response.data.data.phone_number }
+        sessionStorage.setItem('jwt', encode(JSON.stringify(users)))
+        userStore.setUserInfo(users)
+        loginFormState.loading = false
+        setToken('Bearer')
+        setAuthed()
+        router.push({ path: '/' })
+      } else {
+        ElMessage(response.data.msg)
+        loginFormState.loading = false
+      }
+    }).catch(error => {
+      // 处理错误
+      console.error(error)
+    })
+  })
+}
+const handleLogin = () => {
+  loginFormRef.value.validate(valid => {
+    if (!valid) {
+      return false
+    }
+    loginFormState.loading = true
+    const loginForm = {
+      phone: loginFormState.phone,
+      password: loginFormState.pwd
+    }
+    console.log(loginForm)
+    axios.post('http://localhost:9000/user/login', loginForm, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }).then(response => {
+      console.log(response)
+      if (response.data.success) {
+        const users = { role: 'admin', UUID: response.data.data.id, username: response.data.data.name, phone: response.data.data.phone_number }
+        sessionStorage.setItem('jwt', encode(JSON.stringify(users)))
+        userStore.setUserInfo(users)
+        loginFormState.loading = false
+        setToken('Bearer')
+        setAuthed()
+        router.push({ path: '/' })
+      } else {
+        ElMessage(response.data.msg)
+        loginFormState.loading = false
+      }
+    }).catch(error => {
+      // 处理错误
+      console.error(error)
+    })
+  })
+}
+</script>
+<style lang="less" scoped>
+.login-wrapper {
+  background: url('@/assets/img/login.jpg');
+  background-size: 100% 100%;
+  .el-header{
+    display: flex;
+    justify-content: end;
+    padding: 10px 20px;
+    height: 60px;
+    line-height: 60px;
+    .title{
+      color: #fff;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 20px;
+    }
+    .el-dropdown{
+      line-height: 60px;
+    }
+  }
+  .login {
+    width: 100vw;
+    height: calc(100vh - 60px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    .login-center {
+      width: 396px;
+      height: auto;
+      border: none;
+      background-color: rgba(255, 255, 255,.1);
+    }
+    .card_header {
+      font-size: 18px;
+      font-weight:700;
+      color: #fff;
+      text-align: center;
+    }
+  }
+
+}
+</style>
